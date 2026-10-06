@@ -1,4 +1,23 @@
-// decoder (1 per subcore)
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 10/04/2026 08:01:31 PM
+// Design Name: 
+// Module Name: decoder
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
 
 module decoder (
     input  wire [31:0] instr,
@@ -9,9 +28,9 @@ module decoder (
     output wire [15:0] imm16,       // 16-bit immediate
 
     output reg  [4:0]  alu_op,      // Internal ALU opcode
-    output reg         alu_b_sel,   // 0 = Rb, 1 = imm16
+    output reg         alu_b_sel,   // 0: alu_b = Rb, 1: alu_b = imm16
     output reg         reg_we,      // Instruction writes a register
-    output reg         wb_sel,      // 0 = ALU result, 1 = Load data
+    output reg         wb_sel,      // 0:  = ALU result, 1: = Load data
     output reg         mem_rd,      // LDR flag
     output reg         mem_wr,      // STR flag
     output reg         br_uncond,   // BRA flag
