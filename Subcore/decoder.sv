@@ -45,7 +45,11 @@ module decoder (
     wire [4:0] func   = instr[26:22];
 
     assign rd_addr  = instr[21:19];
+    
+    //when loading or storing Ra should have the base address so when mem_wr or rd it should be Rd's place value in the isa
     assign rs1_addr = instr[18:16];
+    
+    
     assign imm16    = instr[15:0];
 
     // Read addr 2 multiplexing: 
@@ -109,11 +113,13 @@ module decoder (
             5'b00100: begin  // M-type
                 case (func)
                     5'b00000: begin // LDR
+                        alu_b_sel = 1'b1;
                         mem_rd = 1'b1;
                         reg_we = 1'b1;
                         wb_sel = 1'b1;  // Write back from load data, not ALU
                     end
                     5'b00001: begin // STR
+                        alu_b_sel = 1'b1;
                         mem_wr = 1'b1;
                     end
                     default: illegal = 1'b1;
