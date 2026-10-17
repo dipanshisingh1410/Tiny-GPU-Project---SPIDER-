@@ -23,14 +23,23 @@
 // executes A-type and I-type instr, alu_op == OP_FUNC.
 
 
-module alu (
-    input  wire [15:0] a,        // A (Ra)
-    input  wire [15:0] b,        // B (Rb or imm16)
-    input  wire [4:0]  alu_op,
-    output reg  [15:0] alu_out
+module alu #(
+    parameter DATA_W = 16
+)(
+    input  wire [DATA_W-1:0] a,        // A (Ra)
+    input  wire [DATA_W-1:0] b,        // B (Rb or imm)
+    input  wire [4:0]        alu_op,
+    output reg  [DATA_W-1:0] alu_out,
+    output wire              zero,
+    output wire              neg,
+    output wire              carry,
+    output wire              overflow
 );
 
-    reg zero,neg,carry,overflow,c;
+    localparam SHAMT_W = (DATA_W > 1) ? $clog2(DATA_W) : 1;
+
+    reg c;
+
     // A-type, arithmetic
     localparam OP_ADD   = 5'b00000;
     localparam OP_SUB   = 5'b00001;
@@ -53,23 +62,24 @@ module alu (
     localparam OP_GE    = 5'b10101;
 
     // I-type, moving
-    localparam OP_MOV   = 5'b11000;   
-    localparam OP_MOVI  = 5'b11001;   
+    localparam OP_MOV   = 5'b11000;
+    localparam OP_MOVI  = 5'b11001;
 
-    wire signed [15:0] a_signed   = a;
-    wire signed [15:0] b_signed   = b;
-    wire signed [31:0] mul_signed = a_signed * b_signed;   
-    wire        [3:0]  shift_amt  = b[3:0];    
+    wire signed [DATA_W-1:0]   a_signed   = a;
+    wire signed [DATA_W-1:0]   b_signed   = b;
+    wire signed [2*DATA_W-1:0] mul_signed = a_signed * b_signed;
+    wire        [SHAMT_W-1:0]  shift_amt  = b[SHAMT_W-1:0];
+
+    localparam [DATA_W-2:0] ZEROS = {(DATA_W-1){1'b0}};
 
     always @(*) begin
-    c=1'b0;
+        c = 1'b0;
         case (alu_op)
-        
             // A-type, arithmetic
-            OP_ADD:   {c,alu_out} = a + b;
-            OP_SUB:   {c,alu_out} = a - b;
-            OP_MUL:   alu_out = mul_signed[15:0];
-            OP_MULH:  alu_out = mul_signed[31:16];
+            OP_ADD:   {c, alu_out} = a + b;
+            OP_SUB:   {c, alu_out} = a - b;      // c = borrow
+            OP_MUL:   alu_out = mul_signed[DATA_W-1:0];
+            OP_MULH:  alu_out = mul_signed[2*DATA_W-1:DATA_W];
             OP_AND:   alu_out = a & b;
             OP_OR:    alu_out = a | b;
             OP_XOR:   alu_out = a ^ b;
@@ -77,28 +87,30 @@ module alu (
             OP_SHL:   alu_out = a << shift_amt;
             OP_SHR:   alu_out = a >> shift_amt;
             OP_SRA:   alu_out = a_signed >>> shift_amt;
-            
+
             // A-type, comparisons (signed)
-            OP_EQ:    alu_out = {15'b0, (a == b)};
-            OP_NEQ:   alu_out = {15'b0, (a != b)};
-            OP_LT:    alu_out = {15'b0, (a_signed <  b_signed)};
-            OP_LE:    alu_out = {15'b0, (a_signed <= b_signed)};
-            OP_GT:    alu_out = {15'b0, (a_signed >  b_signed)};
-            OP_GE:    alu_out = {15'b0, (a_signed >= b_signed)};
+            OP_EQ:    alu_out = {ZEROS, (a == b)};
+            OP_NEQ:   alu_out = {ZEROS, (a != b)};
+            OP_LT:    alu_out = {ZEROS, (a_signed <  b_signed)};
+            OP_LE:    alu_out = {ZEROS, (a_signed <= b_signed)};
+            OP_GT:    alu_out = {ZEROS, (a_signed >  b_signed)};
+            OP_GE:    alu_out = {ZEROS, (a_signed >= b_signed)};
 
             // I-type, moving
-            OP_MOV:   alu_out = a;  // Ra
-            OP_MOVI:  alu_out = b;  // imm16
+            OP_MOV:   alu_out = a;
+            OP_MOVI:  alu_out = b;
 
-            default:  alu_out = 16'h0000;
-        
+            default:  alu_out = {DATA_W{1'b0}};
         endcase
     end
-    
-    assign zero     = (alu_out == 16'b0);
-    assign neg      = alu_out[15];                     
+
+    wire add_ovf = (a[DATA_W-1] == b[DATA_W-1]) && (alu_out[DATA_W-1] != a[DATA_W-1]);
+    wire sub_ovf = (a[DATA_W-1] != b[DATA_W-1]) && (alu_out[DATA_W-1] != a[DATA_W-1]);
+
+    assign zero     = (alu_out == {DATA_W{1'b0}});
+    assign neg      = alu_out[DATA_W-1];
     assign carry    = c;
-    assign overflow = (alu_op == 4'b0000) ? (a[15] == b[15]) && (alu_out[15] != a[15]) :
-                  (alu_op == 4'b1000) ? (alu_out[15] != b[15]) && (alu_out[15] != a[15]) :
-                  1'b0;
+    assign overflow = (alu_op == OP_ADD) ? add_ovf :
+                      (alu_op == OP_SUB) ? sub_ovf : 1'b0;
+
 endmodule
