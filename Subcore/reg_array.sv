@@ -29,7 +29,7 @@
         R7 : global_thread_id */
 
 module reg_array #(
-    parameter DATA_W = 16,
+    parameter DATA_W = 32,
     parameter NUM_OF_REG = 8,
     parameter ADDR_WIDTH = (NUM_OF_REG >1)?$clog2(NUM_OF_REG):1
 )(
@@ -52,7 +52,7 @@ module reg_array #(
     // 1 synchronous write port:
     input  wire        we,
     input  wire [ADDR_WIDTH-1:0]  waddr,
-    input  wire [15:0] wdata
+    input  wire [DATA_W-1:0] wdata
 );
 
 
@@ -77,7 +77,7 @@ module reg_array #(
             end
         end 
         else if (init_en & !hold) begin  // give priority to initialization at warp launch
-            for (i = 0; i < NUM_OF_REG; i = i + 1)
+           for (i = 0; i < NUM_OF_REG-1; i = i + 1)
                 regs[i] <= {DATA_W{1'b0}};
             regs[1]  <= init_r1;   // later NBA wins over the loop's zero
             regs[2]  <= init_r2;
