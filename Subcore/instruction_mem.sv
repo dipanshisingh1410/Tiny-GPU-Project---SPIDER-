@@ -27,7 +27,7 @@ output [31:0] instruction
 
 reg [31:0] mem [SIZE-1:0];
 
-	initial $readmemh("program.hex", mem);
+	initial $readmemh("program.mem", mem);
 
  	assign instruction = (pc[31:2] < SIZE) ? mem[pc >> 2] : 32'h400000;
 
