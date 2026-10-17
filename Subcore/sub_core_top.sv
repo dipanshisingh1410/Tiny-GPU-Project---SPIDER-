@@ -25,9 +25,9 @@
 module sub_core_top #(
     // ---- Instance parameters ----
     localparam int ALU_COUNT  = 2,
-    localparam int DATA_W     = 16,
+    localparam int DATA_W     = 32,
     localparam int NUM_OF_REG = 8,
-    localparam int PTR_W      = 16
+    localparam int PTR_W      = 32
 )(
     input clk,
     input rst_n,
@@ -36,7 +36,7 @@ module sub_core_top #(
     input logic [PTR_W-1:0] srcptr,
     input logic [PTR_W-1:0] destptr,
     input logic [PTR_W-1:0] instrucptr,
-    input logic [15:0] gbl_warp_id
+    input logic [31:0] gbl_warp_id
 
     );
     
@@ -44,7 +44,7 @@ module sub_core_top #(
     
     // ---- Inputs to sub_core ----
     logic                        input_detect;
-    logic [DATA_W-1:0]           instruction;
+    logic [31:0]           instruction;
     logic [DATA_W*ALU_COUNT-1:0] mem_data_ip;
     
     // ---- Outputs from sub_core ----
