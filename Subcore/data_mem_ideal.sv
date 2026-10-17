@@ -21,7 +21,7 @@
 
 
 module data_mem#(
-    parameter DATA_W = 16,
+    parameter DATA_W = 32,
     parameter ALU_COUNT = 2,
     parameter size = 256
     
