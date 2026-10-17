@@ -22,9 +22,9 @@
 
 module sub_core#(
     parameter ALU_COUNT = 2,
-    parameter DATA_W = 16,
+    parameter DATA_W = 32,
     parameter NUM_OF_REG = 8,
-    parameter PTR_W = 16,
+    parameter PTR_W = 32,
     localparam ADDR_WIDTH = (NUM_OF_REG >1)?$clog2(NUM_OF_REG):1
 )(  input clk,
     input rst_n,
@@ -33,17 +33,17 @@ module sub_core#(
     input logic [PTR_W-1:0] srcptr,
     input logic [PTR_W-1:0] destptr,
     input logic [PTR_W-1:0] instrucptr,
-    input logic [DATA_W-1:0] instruction,    
-    input logic [15:0] gbl_warp_id,
+    input logic [31:0] instruction,    
+    input logic [31:0] gbl_warp_id,
     input logic [DATA_W*ALU_COUNT-1:0]mem_data_ip,
-    input logic input_detect, // still have to figure out
+    input logic input_detect, // still have to figure out not used yet
     
-    output logic [DATA_W*ALU_COUNT-1:0]opc,
+    output logic [DATA_W*ALU_COUNT-1:0]opc, //idk what this is yet
     output logic state, //when initialised it is 0 and after finishing it becomes 1
     output logic [31:0] pc,
     output logic [DATA_W*ALU_COUNT-1:0]mem_addr,
     output logic [DATA_W*ALU_COUNT-1:0]mem_data_op,
-    output logic [PTR_W-1:0] intruc_addr,
+    output logic [PTR_W-1:0] intruc_addr, // pc + instruc base ptr i didnt implement this yet
     output logic mem_rd_op,
     output logic mem_wr_op
     
@@ -139,22 +139,29 @@ module sub_core#(
     
     always@(*) begin //calculate hold
         hold = hold_ip;
-        init = init_ip&state + !rst_n + is_exit;
+        init = init_ip&state + !rst_n;
+        for (k = 0;k < ALU_COUNT; k=k+1) 
+            begin
+                init_rtid[k] = gbl_warp_id + k;
+                init_r1[k] = srcptr + gbl_warp_id + k;
+                init_r2[k] = destptr + gbl_warp_id + k;
+            end
+        
     end
     
     always@(*) begin //connect the modules
-        next_pc <= pc+4;
+        next_pc = pc+4;
         mem_rd_op = mem_rd;
         mem_wr_op = mem_wr;
         intruc_addr = localinstrucptr + pc;
         alu_a = ra_data;
-        if (alu_b_sel) begin
+        if (!alu_b_sel) begin
             alu_b = rb_data;
         end else begin
             alu_b = '{ALU_COUNT{imm16}};
         end
-        if(alu_b_sel) begin
-            for (k = 0;k<ALU_COUNT;k=k+1) begin
+        if(wb_sel) begin
+            for (k = 0;k<ALU_COUNT;k=   k+1) begin
                 w_data[k] = mem_data_ip[k*DATA_W+:DATA_W]; // dest data is from the memory
             end      
         end else begin
@@ -169,50 +176,41 @@ module sub_core#(
         end
         if(mem_wr)begin
             for (k = 0;k<ALU_COUNT;k=k+1) begin
-                mem_data_op[k*DATA_W+:DATA_W] = ra_data[k]; // copying address from alu_out
+                mem_data_op[k*DATA_W+:DATA_W] = rb_data[k]; // data which is in rb is stored in mem at corresponding address
             end 
         end
         
         
     end
     
-    always@(posedge clk) begin
+    
+    //
+    
+    
+    
+    //
+    
+    always@(posedge clk) begin // combinational block
         if(!rst_n) //reset block
         begin
             pc <= 32'b0;
             state = 1'b1;;
-            for (k = 0; k < ALU_COUNT; k = k + 1) begin
-                init_r1[k]   <= '0;
-                init_r2[k]   <= '0;
-                init_rtid[k] <= '0;
-            end
+
             
         end else if(init) //initilization block
         begin
             pc <= 32'b0;
             state = 1'b0;
             localinstrucptr = instrucptr;
-            for (k = 0;k < ALU_COUNT; k=k+1) 
-            begin
-                init_rtid[k] <= gbl_warp_id + k;
-                init_r1[k] <= srcptr + gbl_warp_id + k;
-                init_r2[k] <= destptr + gbl_warp_id + k;
-            end
-            
-        end else 
-        begin   //normal execution block
-            if(is_exit) begin
+                        
+        end else if(is_exit) 
+        begin
                 pc <= 32'b0;
                 state = 1'b1;               
-                for (k = 0; k < ALU_COUNT; k = k + 1) begin
-                    init_r1[k]   <= '0;
-                    init_r2[k]   <= '0;
-                    init_rtid[k] <= '0;
-                end
-            end
-            pc <= next_pc;
-            
-        end
+            end else begin //normal execution block
+                if(state == 1'b0)
+                pc <= next_pc;
+            end                              
     end    
     
     
